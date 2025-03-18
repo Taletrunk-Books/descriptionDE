@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Amazon Kitap Açıklama Çekici",
+  "version": "1.0",
+  "description": "Amazon'dan kitap açıklamalarını kolayca çekmenizi sağlar",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*.amazon.de/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "amazon_batch_scraper.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.amazon.de/*"],
+      "js": ["content.js"]
+    }
+  ]
+} 
