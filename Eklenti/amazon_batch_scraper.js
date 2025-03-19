@@ -4,8 +4,8 @@ let batchSize = 20;
 let totalProcessed = 0;
 
 // API endpoint'i
-const API_URL = 'http://localhost:8000/api/v1/amazon/batch';
-const BATCH_STATUS_URL = 'http://localhost:8000/api/v1/amazon/batch-status';
+const API_URL = 'http://157.245.118.176:8000/api/v1/amazon/batch';
+const BATCH_STATUS_URL = 'http://157.245.118.176:8000/api/v1/amazon/batch-status';
 
 async function closeTab(tabId) {
     try {
@@ -177,7 +177,7 @@ function normalizeAsin(asin) {
 // Toplu veri gönderme fonksiyonu
 async function sendBatchToApi(products) {
     try {
-        const response = await fetch('http://localhost:8000/api/v1/amazon/process-batch', {
+        const response = await fetch('http://157.245.118.176:8000/api/v1/amazon/process-batch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -199,7 +199,7 @@ async function sendBatchToApi(products) {
         for (let i = 0; i < 3; i++) {
             try {
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                const response = await fetch('http://localhost:8000/api/v1/amazon/process-batch', {
+                const response = await fetch('http://157.245.118.176:8000/api/v1/amazon/process-batch', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -313,7 +313,7 @@ async function processSingleAsin(record, tab) {
 // Batch durumunu kontrol et
 async function checkBatchStatus(totalProducts) {
     try {
-        const response = await fetch(`http://localhost:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
+        const response = await fetch(`http://157.245.118.176:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
         
         if (!response.ok) {
             throw new Error(`API Hatası: ${response.status}`);
@@ -329,7 +329,7 @@ async function checkBatchStatus(totalProducts) {
         for (let i = 0; i < 3; i++) {
             try {
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                const response = await fetch(`http://localhost:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
+                const response = await fetch(`http://157.245.118.176:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
                 if (response.ok) {
                     return await response.json();
                 }

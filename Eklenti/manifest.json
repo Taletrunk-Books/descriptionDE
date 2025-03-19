@@ -11,7 +11,8 @@
     "storage"
   ],
   "host_permissions": [
-    "*://*.amazon.de/*"
+    "*://*.amazon.de/*",
+    "http://157.245.118.176:8000/*"
   ],
   "action": {
     "default_popup": "popup.html"
