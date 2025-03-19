@@ -3,8 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectFileButton = document.getElementById('selectFile');
     const startProcessButton = document.getElementById('startProcess');
     const statusDiv = document.getElementById('status');
+    const progressBar = document.getElementById('progressBar');
+    const startBatchInput = document.getElementById('startBatch');
 
-    if (!csvFileInput || !selectFileButton || !startProcessButton || !statusDiv) {
+    if (!csvFileInput || !selectFileButton || !startProcessButton || !statusDiv || !progressBar || !startBatchInput) {
         console.error('Gerekli HTML elementleri bulunamadı!');
         return;
     }
@@ -44,16 +46,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             showStatus('İşlem başlatılıyor...', 'success');
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+
+            // Başlangıç batch numarasını al
+            const startBatch = parseInt(startBatchInput.value) || 0;
+            console.log('Başlangıç batch numarası:', startBatch);
 
             // Background script'e mesaj gönder
             chrome.runtime.sendMessage({
                 action: 'startBatchExtraction',
-                records: records
+                records: records,
+                startBatch: startBatch
             }, (response) => {
                 if (chrome.runtime.lastError) {
                     showStatus('Hata: ' + chrome.runtime.lastError.message, 'error');
                 } else if (response && response.status === 'success') {
                     showStatus('İşlem başarıyla tamamlandı!', 'success');
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
                 } else {
                     showStatus('Hata: ' + (response?.message || 'Bilinmeyen hata'), 'error');
                 }

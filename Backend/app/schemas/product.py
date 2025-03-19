@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class ProductBase(BaseModel):
     asin: str = Field(..., max_length=10)
@@ -10,6 +10,7 @@ class ProductBase(BaseModel):
     sp2_stock: Optional[int] = None
     category: Optional[str] = None
     description: Optional[str] = None
+    title: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -24,4 +25,7 @@ class ProductResponse(ProductBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+class BatchRequest(BaseModel):
+    products: List[ProductCreate] 

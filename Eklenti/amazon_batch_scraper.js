@@ -1,10 +1,11 @@
 let csvContent = "id;ean;asin;rank;sp1_stock;sp2_stock;kategori;açıklama\n";
 let currentBatchNumber = 0;
-let batchSize = 5000;
+let batchSize = 20;
 let totalProcessed = 0;
 
 // API endpoint'i
 const API_URL = 'http://localhost:8000/api/v1/amazon/batch';
+const BATCH_STATUS_URL = 'http://localhost:8000/api/v1/amazon/batch-status';
 
 async function closeTab(tabId) {
     try {
@@ -176,29 +177,42 @@ function normalizeAsin(asin) {
 // Toplu veri gönderme fonksiyonu
 async function sendBatchToApi(products) {
     try {
-        console.log('API\'ye gönderilecek veriler:', products);
-        const response = await fetch(API_URL, {
+        const response = await fetch('http://localhost:8000/api/v1/amazon/process-batch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
             },
-            body: JSON.stringify({ products: products })
+            body: JSON.stringify({ products })
         });
 
-        console.log('API Yanıt Durumu:', response.status);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Hata Detayı:', errorText);
-            throw new Error(`API Hatası: ${response.status} - ${errorText}`);
+            throw new Error(`API Hatası: ${response.status}`);
         }
 
-        const result = await response.json();
-        console.log('API Başarılı Yanıt:', result);
-        return result;
+        const data = await response.json();
+        console.log('Batch işleme sonucu:', data);
+        
+        return data;
     } catch (error) {
-        console.error('API Hatası:', error);
+        console.error('Batch gönderme hatası:', error);
+        // Hata durumunda 3 kez yeniden dene
+        for (let i = 0; i < 3; i++) {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                const response = await fetch('http://localhost:8000/api/v1/amazon/process-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ products })
+                });
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (retryError) {
+                console.error(`Yeniden deneme ${i + 1} başarısız:`, retryError);
+            }
+        }
         throw error;
     }
 }
@@ -296,11 +310,41 @@ async function processSingleAsin(record, tab) {
     }
 }
 
+// Batch durumunu kontrol et
+async function checkBatchStatus(totalProducts) {
+    try {
+        const response = await fetch(`http://localhost:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
+        
+        if (!response.ok) {
+            throw new Error(`API Hatası: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Batch durumu:', data);
+        
+        return data;
+    } catch (error) {
+        console.error('Batch durumu kontrol hatası:', error);
+        // Hata durumunda 3 kez yeniden dene
+        for (let i = 0; i < 3; i++) {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                const response = await fetch(`http://localhost:8000/api/v1/amazon/batch-status?total_products=${totalProducts}&batch_size=20`);
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (retryError) {
+                console.error(`Yeniden deneme ${i + 1} başarısız:`, retryError);
+            }
+        }
+        throw error;
+    }
+}
+
 // processAsins fonksiyonunu güncelle
-async function processAsins(records) {
+async function processAsins(records, startBatch = 0) {
     console.log('İşlem başlıyor...');
     const results = [];
-    const batchSize = 5000;
     const totalRecords = records.length;
     let processedCount = 0;
 
@@ -318,6 +362,16 @@ async function processAsins(records) {
     console.log(`Toplam kayıt: ${totalRecords}`);
     console.log(`Geçerli ASIN: ${validRecords.length}`);
     console.log(`Geçersiz ASIN: ${invalidRecords.length}`);
+    console.log(`Başlangıç batch numarası: ${startBatch}`);
+
+    // Batch durumunu kontrol et
+    const batchStatus = await checkBatchStatus(validRecords.length);
+    let currentBatch = startBatch;
+    
+    if (batchStatus && batchStatus.last_completed_batch > 0 && startBatch === 0) {
+        currentBatch = batchStatus.last_completed_batch;
+        console.log(`Kaldığı yerden devam ediliyor: Batch ${currentBatch}`);
+    }
 
     // 10 sekme oluştur
     const tabs = [];
@@ -330,9 +384,10 @@ async function processAsins(records) {
     }
 
     // Ana batch'leri oluştur
-    for (let i = 0; i < validRecords.length; i += batchSize) {
+    for (let i = currentBatch * batchSize; i < validRecords.length; i += batchSize) {
         const batch = validRecords.slice(i, i + batchSize);
-        console.log(`\nBatch ${Math.floor(i / batchSize) + 1} başlıyor (${batch.length} kayıt)`);
+        const currentBatchNumber = Math.floor(i / batchSize) + 1;
+        console.log(`\nBatch ${currentBatchNumber} başlıyor (${batch.length} kayıt)`);
 
         // Her batch'i 10'ar kayıtlık gruplara böl
         for (let j = 0; j < batch.length; j += 10) {
@@ -372,14 +427,17 @@ async function processAsins(records) {
         // Her batch sonunda API'ye gönder
         if (results.length > 0) {
             try {
-                console.log(`Batch ${Math.floor(i / batchSize) + 1} API'ye gönderiliyor...`);
+                console.log(`Batch ${currentBatchNumber} API'ye gönderiliyor...`);
                 await sendBatchToApi(results);
-                console.log(`Batch ${Math.floor(i / batchSize) + 1} başarıyla kaydedildi`);
+                console.log(`Batch ${currentBatchNumber} başarıyla kaydedildi`);
                 
                 // Sonuçları temizle
                 results.length = 0;
             } catch (error) {
                 console.error('API Hatası:', error);
+                // Hata durumunda kaldığımız batch'i kaydet
+                console.log(`Hata nedeniyle Batch ${currentBatchNumber}'de duruldu`);
+                break;
             }
         }
     }
@@ -401,10 +459,9 @@ async function processAsins(records) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'startBatchExtraction') {
         console.log('Toplu çekme işlemi başlatılıyor...');
-        const startBatch = message.startBatch || 0;
         
         // İşlemi başlat ve sonucu bekle
-        processAsins(message.records, startBatch)
+        processAsins(message.records, message.startBatch)
             .then(() => {
                 console.log('İşlem başarıyla tamamlandı');
                 sendResponse({ status: 'success', message: 'İşlem tamamlandı' });

@@ -61,6 +61,21 @@
       background-color: #f2dede;
       color: #a94442;
     }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .input-group label {
+      font-size: 12px;
+      color: #666;
+    }
+    .input-group input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -71,6 +86,10 @@
     </div>
     <input type="file" id="csvFile" accept=".csv" style="display: none;">
     <button id="selectFile">CSV Dosyası Seç</button>
+    <div class="input-group">
+      <label for="startBatch">Başlangıç Batch Numarası (Opsiyonel)</label>
+      <input type="number" id="startBatch" min="0" placeholder="0">
+    </div>
     <button id="startProcess" disabled>İşlemi Başlat</button>
     <div id="status"></div>
   </div>
