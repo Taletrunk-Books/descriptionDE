@@ -11,6 +11,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Son batch numarasını yükle
+    chrome.storage.local.get('lastBatchNumber', function(result) {
+        if (result.lastBatchNumber) {
+            startBatchInput.value = result.lastBatchNumber;
+            showStatus(`Son kaldığınız batch: ${result.lastBatchNumber}`, 'success');
+        }
+    });
+
     let selectedFile = null;
 
     // CSV dosyası seçme butonu

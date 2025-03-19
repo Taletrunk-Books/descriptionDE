@@ -341,6 +341,27 @@ async function checkBatchStatus(totalProducts) {
     }
 }
 
+// Batch numarasını storage'dan al
+async function getLastBatchNumber() {
+    try {
+        const result = await chrome.storage.local.get('lastBatchNumber');
+        return result.lastBatchNumber || 0;
+    } catch (error) {
+        console.error('Batch numarası alınamadı:', error);
+        return 0;
+    }
+}
+
+// Batch numarasını storage'a kaydet
+async function saveBatchNumber(batchNumber) {
+    try {
+        await chrome.storage.local.set({ lastBatchNumber: batchNumber });
+        console.log('Batch numarası kaydedildi:', batchNumber);
+    } catch (error) {
+        console.error('Batch numarası kaydedilemedi:', error);
+    }
+}
+
 // processAsins fonksiyonunu güncelle
 async function processAsins(records, startBatch = 0) {
     console.log('İşlem başlıyor...');
@@ -431,12 +452,16 @@ async function processAsins(records, startBatch = 0) {
                 await sendBatchToApi(results);
                 console.log(`Batch ${currentBatchNumber} başarıyla kaydedildi`);
                 
+                // Batch numarasını kaydet
+                await saveBatchNumber(currentBatchNumber);
+                
                 // Sonuçları temizle
                 results.length = 0;
             } catch (error) {
                 console.error('API Hatası:', error);
                 // Hata durumunda kaldığımız batch'i kaydet
                 console.log(`Hata nedeniyle Batch ${currentBatchNumber}'de duruldu`);
+                await saveBatchNumber(currentBatchNumber);
                 break;
             }
         }
